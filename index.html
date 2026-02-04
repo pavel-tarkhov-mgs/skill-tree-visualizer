@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skill Tree Visualizer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Skill Tree Visualizer</h1>
+    </header>
+    
+    <main class="container">
+        <div class="left-panel">
+            <div class="input-section">
+                <h2>JSON Input</h2>
+                <textarea id="jsonInput" placeholder="Paste your skill tree JSON here..."></textarea>
+            </div>
+            
+            <button id="generateBtn">Generate Skill Tree</button>
+            
+            <div id="errorMessage" class="error-message"></div>
+        </div>
+        
+        <div class="right-panel">
+            <div class="canvas-container">
+                <div class="canvas-header">
+                    <h2>Skill Tree Visualization</h2>
+                    <button id="resetViewBtn" class="reset-btn">Reset View</button>
+                </div>
+                <div class="canvas-controls">
+                    <span class="controls-hint">🖱️ Drag to pan • Scroll to zoom • Click Reset to center</span>
+                </div>
+                <canvas id="skillTreeCanvas" width="1200" height="800"></canvas>
+            </div>
+        </div>
+    </main>
+    
+    <script src="script.js"></script>
+</body>
+</html>

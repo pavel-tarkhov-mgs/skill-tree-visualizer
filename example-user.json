@@ -1,0 +1,73 @@
+{
+  "skills": [
+    {
+      "id": "root_skill",
+      "name": "Базовая Сила",
+      "type": "passive",
+      "description": "Увеличивает урон на 5%",
+      "price": 0,
+      "gameplayEffects": [
+        "damage_mult:1.05"
+      ],
+      "abilities": [],
+      "point": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "connections": [
+        {
+          "type": "line",
+          "id": "conn_1",
+          "targetSkillId": "strength_1",
+          "wayPoints": [
+            {
+              "x": 5.0,
+              "y": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "strength_1",
+      "name": "Мощный Удар",
+      "type": "active",
+      "description": "Отбрасывает врагов при ударе",
+      "price": 25,
+      "gameplayEffects": [],
+      "abilities": [
+        "heavy_knockback"
+      ],
+      "point": {
+        "x": 10.0,
+        "y": 0.0
+      },
+      "connections": [
+        {
+          "type": "ark",
+          "id": "conn_2",
+          "targetSkillId": "strength_2",
+          "circleCenter": {
+            "x": 15.0,
+            "y": 5.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "strength_2",
+      "name": "Ярость Великана",
+      "type": "passive",
+      "price": 50,
+      "gameplayEffects": [
+        "size_mult:1.2"
+      ],
+      "abilities": [],
+      "point": {
+        "x": 20.0,
+        "y": 10.0
+      },
+      "connections": []
+    }
+  ]
+}
