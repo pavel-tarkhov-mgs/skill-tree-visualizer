@@ -627,6 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Editor elements
     const skillEditor = document.getElementById('skillEditor');
+    const editorPlaceholder = document.getElementById('editorPlaceholder');
     const closeEditorBtn = document.getElementById('closeEditorBtn');
     const editId = document.getElementById('editId');
     const editName = document.getElementById('editName');
@@ -641,6 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close editor button
     closeEditorBtn.addEventListener('click', () => {
         skillEditor.style.display = 'none';
+        editorPlaceholder.style.display = 'flex';
         renderer.selectedSkill = null;
         renderer.redraw();
     });
@@ -660,11 +662,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Render connections
             renderConnections(skill);
             
-            // Show editor
-            skillEditor.style.display = 'block';
+            // Show editor, hide placeholder
+            skillEditor.style.display = 'flex';
+            editorPlaceholder.style.display = 'none';
         } else {
-            // Hide editor
+            // Hide editor, show placeholder
             skillEditor.style.display = 'none';
+            editorPlaceholder.style.display = 'flex';
         }
     };
 

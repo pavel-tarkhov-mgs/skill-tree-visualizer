@@ -11,80 +11,91 @@
         <h1>Skill Tree Visualizer</h1>
     </header>
     
-    <main class="container">
-        <div class="left-panel">
-            <div class="input-section">
-                <h2>JSON Input</h2>
+    <main class="main-layout">
+        <section class="top-section">
+            <div class="input-container">
+                <div class="input-header">
+                    <h2>JSON Input</h2>
+                    <button id="generateBtn">Generate Skill Tree</button>
+                </div>
                 <textarea id="jsonInput" placeholder="Paste your skill tree JSON here..."></textarea>
+                <div id="errorMessage" class="error-message"></div>
             </div>
-            
-            <button id="generateBtn">Generate Skill Tree</button>
-            
-            <div id="errorMessage" class="error-message"></div>
-        </div>
+        </section>
         
-        <div class="right-panel">
-            <div class="canvas-container">
-                <div class="canvas-header">
-                    <h2>Skill Tree Visualization</h2>
-                    <button id="resetViewBtn" class="reset-btn">Reset View</button>
-                </div>
-                <div class="canvas-controls">
-                    <span class="controls-hint">🖱️ Drag to pan • Scroll to zoom • Click Reset to center</span>
-                </div>
-                <canvas id="skillTreeCanvas" width="1200" height="800"></canvas>
-            
-            <div id="skillEditor" class="skill-editor" style="display: none;">
-                <div class="editor-header">
-                    <h3>Edit Skill</h3>
-                    <button id="closeEditorBtn" class="close-btn">&times;</button>
-                </div>
-                <div class="editor-content">
-                    <div class="form-group">
-                        <label for="editId">ID</label>
-                        <input type="text" id="editId" readonly>
+        <section class="workspace-container">
+            <div class="canvas-area">
+                <div class="canvas-container">
+                    <div class="canvas-header">
+                        <h2>Skill Tree Visualization</h2>
+                        <button id="resetViewBtn" class="reset-btn">Reset View</button>
                     </div>
-                    <div class="form-group">
-                        <label for="editName">Name</label>
-                        <input type="text" id="editName">
+                    <div class="canvas-controls">
+                        <span class="controls-hint">🖱️ Drag to pan • Scroll to zoom • Click Reset to center</span>
                     </div>
-                    <div class="form-group">
-                        <label for="editType">Type</label>
-                        <select id="editType">
-                            <option value="active">Active</option>
-                            <option value="passive">Passive</option>
-                            <option value="ultimate">Ultimate</option>
-                            <option value="basic">Basic</option>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="editX">X</label>
-                            <input type="number" id="editX">
-                        </div>
-                        <div class="form-group">
-                            <label for="editY">Y</label>
-                            <input type="number" id="editY">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="editPrice">Price</label>
-                        <input type="number" id="editPrice">
-                    </div>
-                    <div class="form-group">
-                        <label for="editDescription">Description</label>
-                        <textarea id="editDescription" rows="3"></textarea>
-                    </div>
-
-                    <div class="connections-section">
-                        <h4>Connections</h4>
-                        <div id="connectionsList" class="connections-list"></div>
-                        <button id="addConnectionBtn" class="add-connection-btn">+ Add Connection</button>
-                    </div>
+                    <canvas id="skillTreeCanvas" width="1200" height="800"></canvas>
                 </div>
             </div>
-        </div>
-    </div>
+            
+            <aside class="sidebar">
+                <div id="editorPlaceholder" class="editor-placeholder">
+                    <div class="placeholder-content">
+                        <span class="placeholder-icon">✏️</span>
+                        <p>Select a skill to edit parameters</p>
+                    </div>
+                </div>
+
+                <div id="skillEditor" class="skill-editor" style="display: none;">
+                    <div class="editor-header">
+                        <h3>Edit Skill</h3>
+                        <button id="closeEditorBtn" class="close-btn">&times;</button>
+                    </div>
+                    <div class="editor-content">
+                        <div class="form-group">
+                            <label for="editId">ID</label>
+                            <input type="text" id="editId" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="editName">Name</label>
+                            <input type="text" id="editName">
+                        </div>
+                        <div class="form-group">
+                            <label for="editType">Type</label>
+                            <select id="editType">
+                                <option value="active">Active</option>
+                                <option value="passive">Passive</option>
+                                <option value="ultimate">Ultimate</option>
+                                <option value="basic">Basic</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editX">X</label>
+                                <input type="number" id="editX">
+                            </div>
+                            <div class="form-group">
+                                <label for="editY">Y</label>
+                                <input type="number" id="editY">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="editPrice">Price</label>
+                            <input type="number" id="editPrice">
+                        </div>
+                        <div class="form-group">
+                            <label for="editDescription">Description</label>
+                            <textarea id="editDescription" rows="3"></textarea>
+                        </div>
+
+                        <div class="connections-section">
+                            <h4>Connections</h4>
+                            <div id="connectionsList" class="connections-list"></div>
+                            <button id="addConnectionBtn" class="add-connection-btn">+ Add Connection</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </section>
     </main>
     
     <script src="script.js"></script>
