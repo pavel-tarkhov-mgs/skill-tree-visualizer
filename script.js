@@ -10,6 +10,7 @@ class SkillTreeRenderer {
         // Rendering settings
         this.skillRadius = 35;
         this.connectionWidth = 3;
+        this.controlPointRadius = 6;
         
         // Pan and Zoom settings
         this.offsetX = 0;
@@ -29,6 +30,10 @@ class SkillTreeRenderer {
         this.dragOffsetX = 0;
         this.dragOffsetY = 0;
 
+        // Control point dragging state
+        this.isDraggingControlPoint = false;
+        this.draggedControlPoint = null;
+
         // Hover state
         this.hoveredSkill = null;
         
@@ -36,6 +41,7 @@ class SkillTreeRenderer {
         this.selectedSkill = null;
         this.onSkillSelect = null; // Callback for selection
         this.onSkillMove = null;   // Callback for movement
+        this.onConnectionChange = null; // Callback for connection updates
         
         // Color scheme for different skill types
         this.typeColors = {
@@ -96,6 +102,16 @@ class SkillTreeRenderer {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
+            // Check if clicking on a control point
+            const controlPoint = this.getControlPointAtPosition(mouseX, mouseY);
+            
+            if (controlPoint) {
+                this.isDraggingControlPoint = true;
+                this.draggedControlPoint = controlPoint;
+                this.canvas.style.cursor = 'crosshair';
+                return;
+            }
+
             // Check if clicking on a skill
             const clickedSkill = this.getSkillAtPosition(mouseX, mouseY);
             
@@ -137,7 +153,19 @@ class SkillTreeRenderer {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            if (this.isDraggingSkill && this.draggedSkill) {
+            if (this.isDraggingControlPoint && this.draggedControlPoint) {
+                // Update control point position
+                const worldPos = this.screenToWorld(mouseX, mouseY);
+                this.draggedControlPoint.point.x = worldPos.x;
+                this.draggedControlPoint.point.y = worldPos.y;
+                
+                // Notify connection change to update sidebar
+                if (this.onConnectionChange) {
+                    this.onConnectionChange(this.selectedSkill);
+                }
+                
+                this.redraw();
+            } else if (this.isDraggingSkill && this.draggedSkill) {
                 // Update skill position
                 const worldPos = this.screenToWorld(mouseX, mouseY);
                 this.draggedSkill.point.x = worldPos.x - this.dragOffsetX;
@@ -164,7 +192,15 @@ class SkillTreeRenderer {
             } else {
                 // Update cursor and hover state based on what's under mouse
                 const skillUnderMouse = this.getSkillAtPosition(mouseX, mouseY);
-                this.canvas.style.cursor = skillUnderMouse ? 'grab' : 'grab';
+                const controlPointUnderMouse = this.getControlPointAtPosition(mouseX, mouseY);
+                
+                if (controlPointUnderMouse) {
+                    this.canvas.style.cursor = 'crosshair';
+                } else if (skillUnderMouse) {
+                    this.canvas.style.cursor = 'grab';
+                } else {
+                    this.canvas.style.cursor = 'grab'; // Default pan cursor
+                }
 
                 // Update hover state
                 if (this.hoveredSkill !== skillUnderMouse) {
@@ -179,6 +215,8 @@ class SkillTreeRenderer {
             this.isDragging = false;
             this.isDraggingSkill = false;
             this.draggedSkill = null;
+            this.isDraggingControlPoint = false;
+            this.draggedControlPoint = null;
             this.canvas.style.cursor = 'grab';
             // Keep hover state for potential click handling
         });
@@ -188,6 +226,8 @@ class SkillTreeRenderer {
             this.isDragging = false;
             this.isDraggingSkill = false;
             this.draggedSkill = null;
+            this.isDraggingControlPoint = false;
+            this.draggedControlPoint = null;
             this.hoveredSkill = null;
             this.canvas.style.cursor = 'grab';
             this.redraw();
@@ -288,6 +328,54 @@ class SkillTreeRenderer {
         }
 
         return null;
+    }
+
+    // Get control point under cursor
+    getControlPointAtPosition(screenX, screenY) {
+        if (!this.selectedSkill || !this.selectedSkill.connections) return null;
+
+        const worldPos = this.screenToWorld(screenX, screenY);
+        // Add a bit of padding to make it easier to click
+        const hitRadius = this.controlPointRadius + 2; 
+
+        for (const connection of this.selectedSkill.connections) {
+            if (connection.type === 'line' && connection.wayPoints) {
+                for (let i = 0; i < connection.wayPoints.length; i++) {
+                    const wp = connection.wayPoints[i];
+                    const dx = worldPos.x - wp.x;
+                    const dy = worldPos.y - wp.y;
+                    if (Math.abs(dx) <= hitRadius && Math.abs(dy) <= hitRadius) {
+                        return {
+                            type: 'waypoint',
+                            connection: connection,
+                            index: i,
+                            point: wp
+                        };
+                    }
+                }
+            } else if (connection.type === 'ark' && connection.circleCenter) {
+                const center = connection.circleCenter;
+                const dx = worldPos.x - center.x;
+                const dy = worldPos.y - center.y;
+                if (Math.abs(dx) <= hitRadius && Math.abs(dy) <= hitRadius) {
+                    return {
+                        type: 'center',
+                        connection: connection,
+                        point: center
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    drawControlPoint(x, y) {
+        const size = this.controlPointRadius * 2;
+        this.ctx.fillStyle = '#FFD700'; // Yellow
+        this.ctx.fillRect(x - this.controlPointRadius, y - this.controlPointRadius, size, size);
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x - this.controlPointRadius, y - this.controlPointRadius, size, size);
     }
     
     redraw() {
@@ -399,6 +487,13 @@ class SkillTreeRenderer {
         
         this.ctx.lineTo(endX, endY);
         this.ctx.stroke();
+
+        // Draw control points if selected
+        if (sourceSkill === this.selectedSkill && connection.wayPoints) {
+            for (const waypoint of connection.wayPoints) {
+                this.drawControlPoint(waypoint.x, waypoint.y);
+            }
+        }
     }
     
     drawArcConnection(sourceSkill, targetSkill, connection) {
@@ -438,6 +533,24 @@ class SkillTreeRenderer {
         this.ctx.beginPath();
         this.ctx.arc(centerX, centerY, radius, startAngle, endAngle, counterClockwise);
         this.ctx.stroke();
+
+        // Draw control point if selected
+        if (sourceSkill === this.selectedSkill) {
+            this.drawControlPoint(centerX, centerY);
+            
+            // Draw guidelines
+            this.ctx.save();
+            this.ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(centerX, centerY);
+            this.ctx.lineTo(startX, startY);
+            this.ctx.moveTo(centerX, centerY);
+            this.ctx.lineTo(endX, endY);
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
     }
     
     drawAllSkills() {
@@ -689,6 +802,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (skill) {
             editX.value = Math.round(skill.point.x);
             editY.value = Math.round(skill.point.y);
+        }
+    };
+
+    // Handle connection changes
+    renderer.onConnectionChange = (skill) => {
+        if (skill && renderer.selectedSkill === skill) {
+            renderConnections(skill);
         }
     };
 
