@@ -50,7 +50,16 @@ class SkillTreeRenderer {
         this.setupInteraction();
     }
     
+    resize() {
+        this.canvas.width = this.canvas.clientWidth;
+        this.canvas.height = this.canvas.clientHeight;
+        this.redraw();
+    }
+
     setupInteraction() {
+        // Handle window resize
+        window.addEventListener('resize', () => this.resize());
+
         // Mouse wheel for zoom
         this.canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
@@ -245,6 +254,9 @@ class SkillTreeRenderer {
             this.isDragging = false;
             lastTouchDistance = 0;
         });
+
+        // Initial resize
+        this.resize();
     }
     
     resetView() {
@@ -1010,4 +1022,134 @@ document.addEventListener('DOMContentLoaded', () => {
         renderConnections(skill);
         renderer.redraw();
     });
+
+    // Generate JSON and Query functionality
+    const generateJsonBtn = document.getElementById('generateJsonBtn');
+    const generatedJsonOutput = document.getElementById('generatedJsonOutput');
+    const generateQueryBtn = document.getElementById('generateQueryBtn');
+    const generatedQueryOutput = document.getElementById('generatedQueryOutput');
+
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function generateDataStructure() {
+        if (!renderer || !renderer.skills) return null;
+
+        const cleanSkills = renderer.skills.map(skill => {
+            const cleanSkill = {
+                id: skill.id,
+                name: skill.name,
+                type: skill.type,
+                description: skill.description || '',
+                price: skill.price !== undefined ? skill.price : 0,
+                point: {
+                    x: Math.round(skill.point.x * 100) / 100,
+                    y: Math.round(skill.point.y * 100) / 100
+                },
+                gameplayEffects: skill.gameplayEffects || [],
+                abilities: skill.abilities || [],
+                connections: []
+            };
+
+            if (skill.connections && skill.connections.length > 0) {
+                cleanSkill.connections = skill.connections.map(conn => {
+                    const cleanConn = {
+                        targetSkillId: conn.targetSkillId,
+                        id: conn.id || generateUUID(),
+                        type: conn.type || 'line'
+                    };
+
+                    if (cleanConn.type === 'line') {
+                        cleanConn.wayPoints = (conn.wayPoints || []).map(wp => ({
+                            x: Math.round(wp.x * 100) / 100,
+                            y: Math.round(wp.y * 100) / 100
+                        }));
+                    } else if (cleanConn.type === 'ark') {
+                        if (conn.circleCenter) {
+                            cleanConn.circleCenter = {
+                                x: Math.round(conn.circleCenter.x * 100) / 100,
+                                y: Math.round(conn.circleCenter.y * 100) / 100
+                            };
+                        } else {
+                            cleanConn.circleCenter = { x: 0, y: 0 };
+                        }
+                    }
+                    return cleanConn;
+                });
+            }
+
+            return cleanSkill;
+        });
+
+        return { skills: cleanSkills };
+    }
+
+    generateJsonBtn.addEventListener('click', () => {
+        const data = generateDataStructure();
+        if (data) {
+            generatedJsonOutput.value = JSON.stringify(data, null, 2);
+        }
+    });
+
+    generateQueryBtn.addEventListener('click', () => {
+        const data = generateDataStructure();
+        if (!data || !data.skills) return;
+
+        let mutation = 'mutation {\n  updateSkillTree(\n    input: {\n      skills: [\n';
+
+        const skillsStr = data.skills.map(skill => {
+            let s = '        {\n';
+            s += `          id: "${skill.id}"\n`;
+            s += `          name: "${skill.name}"\n`;
+            s += `          type: "${skill.type}"\n`;
+            s += `          description: ${JSON.stringify(skill.description)}\n`;
+            s += `          price: ${skill.price}\n`;
+            s += `          gameplayEffects: ${JSON.stringify(skill.gameplayEffects)}\n`;
+            s += `          conditions: []\n`;
+            s += `          abilities: ${JSON.stringify(skill.abilities)}\n`;
+            s += `          point: {\n            x: ${skill.point.x},\n            y: ${skill.point.y}\n          }\n`;
+            
+            s += '          connections: [\n';
+            if (skill.connections && skill.connections.length > 0) {
+                const conns = skill.connections.map(conn => {
+                    // Determine type for wrapper and enum
+                    // generateDataStructure returns 'ark' or 'line'
+                    const isArk = conn.type === 'ark';
+                    const wrapperKey = isArk ? 'ark' : 'line';
+                    const enumType = isArk ? 'ARK' : 'LINE';
+                    
+                    let c = `            {\n              ${wrapperKey}: {\n`;
+                    c += `                id: "${conn.id}"\n`;
+                    c += `                type: ${enumType}\n`;
+                    c += `                targetSkillId: "${conn.targetSkillId}"\n`;
+                    
+                    if (isArk) {
+                        c += `                circleCenter: {\n                  x: ${conn.circleCenter.x},\n                  y: ${conn.circleCenter.y}\n                }\n`;
+                    } else {
+                        // Format waypoints: [{ x: 1, y: 2 }, { x: 3, y: 4 }]
+                        const wpStr = conn.wayPoints.map(wp => `{ x: ${wp.x}, y: ${wp.y} }`).join(', ');
+                        c += `                wayPoints: [${wpStr}]\n`;
+                    }
+                    
+                    c += '              }\n            }';
+                    return c;
+                });
+                s += conns.join(',\n');
+                if (conns.length > 0) s += '\n';
+            }
+            s += '          ]\n';
+            s += '        }';
+            return s;
+        }).join('\n');
+
+        mutation += skillsStr;
+        mutation += '\n      ]\n    }\n  ) {\n    skills {\n      id\n    }\n  }\n}';
+
+        generatedQueryOutput.value = mutation;
+    });
+
 });
