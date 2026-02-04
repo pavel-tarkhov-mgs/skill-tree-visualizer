@@ -1,30 +1,6 @@
 {
   "skills": [
     {
-      "id": "skill_id",
-      "name": "Название",
-      "type": "passive",
-      "description": "Описание",
-      "price": 0,
-      "gameplayEffects": ["effect1"],
-      "abilities": ["ability1"],
-      "point": { "x": 0.0, "y": 0.0 },
-      "connections": [
-        {
-          "type": "line",
-          "id": "conn_1",
-          "targetSkillId": "target_id",
-          "wayPoints": [{"x": 5.0, "y": 0.0}]
-        }
-      ]
-    }
-  ]
-}
-
-
-{
-  "skills": [
-    {
       "id": "root_skill",
       "name": "Базовая Сила",
       "type": "passive",
