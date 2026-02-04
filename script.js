@@ -22,6 +22,20 @@ class SkillTreeRenderer {
         this.isDragging = false;
         this.lastMouseX = 0;
         this.lastMouseY = 0;
+
+        // Skill dragging state
+        this.isDraggingSkill = false;
+        this.draggedSkill = null;
+        this.dragOffsetX = 0;
+        this.dragOffsetY = 0;
+
+        // Hover state
+        this.hoveredSkill = null;
+        
+        // Selection state
+        this.selectedSkill = null;
+        this.onSkillSelect = null; // Callback for selection
+        this.onSkillMove = null;   // Callback for movement
         
         // Color scheme for different skill types
         this.typeColors = {
@@ -69,38 +83,105 @@ class SkillTreeRenderer {
         
         // Mouse down - start dragging
         this.canvas.addEventListener('mousedown', (e) => {
-            this.isDragging = true;
-            this.lastMouseX = e.clientX;
-            this.lastMouseY = e.clientY;
-            this.canvas.style.cursor = 'grabbing';
-        });
-        
-        // Mouse move - pan
-        this.canvas.addEventListener('mousemove', (e) => {
-            if (this.isDragging) {
-                const dx = e.clientX - this.lastMouseX;
-                const dy = e.clientY - this.lastMouseY;
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Check if clicking on a skill
+            const clickedSkill = this.getSkillAtPosition(mouseX, mouseY);
+            
+            if (clickedSkill) {
+                // Select skill
+                this.selectedSkill = clickedSkill;
+                if (this.onSkillSelect) {
+                    this.onSkillSelect(clickedSkill);
+                }
                 
-                this.offsetX += dx;
-                this.offsetY += dy;
+                this.isDraggingSkill = true;
+                this.draggedSkill = clickedSkill;
+                const worldPos = this.screenToWorld(mouseX, mouseY);
+                this.dragOffsetX = worldPos.x - clickedSkill.point.x;
+                this.dragOffsetY = worldPos.y - clickedSkill.point.y;
+                this.canvas.style.cursor = 'grabbing';
+                this.redraw(); // Redraw to show selection highlight
+            } else {
+                // Deselect if clicking empty space
+                if (this.selectedSkill) {
+                    this.selectedSkill = null;
+                    if (this.onSkillSelect) {
+                        this.onSkillSelect(null);
+                    }
+                    this.redraw();
+                }
                 
+                // Start canvas panning
+                this.isDragging = true;
                 this.lastMouseX = e.clientX;
                 this.lastMouseY = e.clientY;
+                this.canvas.style.cursor = 'grabbing';
+            }
+        });
+        
+        // Mouse move - pan or drag skill
+        this.canvas.addEventListener('mousemove', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (this.isDraggingSkill && this.draggedSkill) {
+                // Update skill position
+                const worldPos = this.screenToWorld(mouseX, mouseY);
+                this.draggedSkill.point.x = worldPos.x - this.dragOffsetX;
+                this.draggedSkill.point.y = worldPos.y - this.dragOffsetY;
+                
+                // Notify movement
+                if (this.onSkillMove) {
+                    this.onSkillMove(this.draggedSkill);
+                }
                 
                 this.redraw();
+            } else if (this.isDragging) {
+                // Pan canvas
+                const dx = e.clientX - this.lastMouseX;
+                const dy = e.clientY - this.lastMouseY;
+
+                this.offsetX += dx;
+                this.offsetY += dy;
+
+                this.lastMouseX = e.clientX;
+                this.lastMouseY = e.clientY;
+
+                this.redraw();
+            } else {
+                // Update cursor and hover state based on what's under mouse
+                const skillUnderMouse = this.getSkillAtPosition(mouseX, mouseY);
+                this.canvas.style.cursor = skillUnderMouse ? 'grab' : 'grab';
+
+                // Update hover state
+                if (this.hoveredSkill !== skillUnderMouse) {
+                    this.hoveredSkill = skillUnderMouse;
+                    this.redraw();
+                }
             }
         });
         
         // Mouse up - stop dragging
         this.canvas.addEventListener('mouseup', () => {
             this.isDragging = false;
+            this.isDraggingSkill = false;
+            this.draggedSkill = null;
             this.canvas.style.cursor = 'grab';
+            // Keep hover state for potential click handling
         });
         
         // Mouse leave - stop dragging
         this.canvas.addEventListener('mouseleave', () => {
             this.isDragging = false;
+            this.isDraggingSkill = false;
+            this.draggedSkill = null;
+            this.hoveredSkill = null;
             this.canvas.style.cursor = 'grab';
+            this.redraw();
         });
         
         // Set initial cursor
@@ -171,6 +252,30 @@ class SkillTreeRenderer {
         this.offsetY = 0;
         this.scale = 1;
         this.redraw();
+    }
+
+    // Convert screen coordinates to world coordinates
+    screenToWorld(screenX, screenY) {
+        const worldX = (screenX - this.canvas.width / 2 - this.offsetX) / this.scale;
+        const worldY = (screenY - this.canvas.height / 2 - this.offsetY) / this.scale;
+        return { x: worldX, y: worldY };
+    }
+
+    // Get skill under cursor
+    getSkillAtPosition(screenX, screenY) {
+        const worldPos = this.screenToWorld(screenX, screenY);
+
+        for (const skill of this.skills) {
+            const dx = worldPos.x - skill.point.x;
+            const dy = worldPos.y - skill.point.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= this.skillRadius) {
+                return skill;
+            }
+        }
+
+        return null;
     }
     
     redraw() {
@@ -332,22 +437,39 @@ class SkillTreeRenderer {
     drawSkill(skill) {
         const x = skill.point.x;
         const y = skill.point.y;
-        
+
         // Get color based on skill type
         const skillType = skill.type ? skill.type.toLowerCase() : 'default';
         const fillColor = this.typeColors[skillType] || this.typeColors['default'];
-        
+
         this.ctx.save();
-        
+
         // Draw circle
         this.ctx.beginPath();
         this.ctx.arc(x, y, this.skillRadius, 0, Math.PI * 2);
         this.ctx.fillStyle = fillColor;
         this.ctx.fill();
+
+        // Draw border - thicker for hovered/dragged/selected skills
+        const isHovered = this.hoveredSkill === skill;
+        const isDragged = this.draggedSkill === skill;
+        const isSelected = this.selectedSkill === skill;
         
-        // Draw border
-        this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 3;
+        let borderWidth = 3;
+        let borderColor = '#ffffff';
+        
+        if (isSelected) {
+            borderWidth = 5;
+            borderColor = '#4CAF50'; // Green for selected
+        } else if (isDragged) {
+            borderWidth = 5;
+            borderColor = '#FFD700'; // Gold for dragged
+        } else if (isHovered) {
+            borderWidth = 4;
+        }
+
+        this.ctx.strokeStyle = borderColor;
+        this.ctx.lineWidth = borderWidth;
         this.ctx.stroke();
         
         // Draw skill name
@@ -503,6 +625,79 @@ document.addEventListener('DOMContentLoaded', () => {
     const jsonInput = document.getElementById('jsonInput');
     const resetViewBtn = document.getElementById('resetViewBtn');
     
+    // Editor elements
+    const skillEditor = document.getElementById('skillEditor');
+    const closeEditorBtn = document.getElementById('closeEditorBtn');
+    const editId = document.getElementById('editId');
+    const editName = document.getElementById('editName');
+    const editType = document.getElementById('editType');
+    const editX = document.getElementById('editX');
+    const editY = document.getElementById('editY');
+    const editPrice = document.getElementById('editPrice');
+    const editDescription = document.getElementById('editDescription');
+    const connectionsList = document.getElementById('connectionsList');
+    const addConnectionBtn = document.getElementById('addConnectionBtn');
+
+    // Close editor button
+    closeEditorBtn.addEventListener('click', () => {
+        skillEditor.style.display = 'none';
+        renderer.selectedSkill = null;
+        renderer.redraw();
+    });
+
+    // Handle selection
+    renderer.onSkillSelect = (skill) => {
+        if (skill) {
+            // Populate form
+            editId.value = skill.id || '';
+            editName.value = skill.name || '';
+            editType.value = skill.type ? skill.type.toLowerCase() : 'active';
+            editX.value = Math.round(skill.point.x);
+            editY.value = Math.round(skill.point.y);
+            editPrice.value = skill.price !== undefined ? skill.price : '';
+            editDescription.value = skill.description || '';
+            
+            // Render connections
+            renderConnections(skill);
+            
+            // Show editor
+            skillEditor.style.display = 'block';
+        } else {
+            // Hide editor
+            skillEditor.style.display = 'none';
+        }
+    };
+
+    // Handle movement
+    renderer.onSkillMove = (skill) => {
+        if (skill) {
+            editX.value = Math.round(skill.point.x);
+            editY.value = Math.round(skill.point.y);
+        }
+    };
+
+    // Handle input changes
+    function updateSelectedSkill() {
+        const skill = renderer.selectedSkill;
+        if (!skill) return;
+
+        skill.name = editName.value;
+        skill.type = editType.value;
+        skill.point.x = parseFloat(editX.value) || 0;
+        skill.point.y = parseFloat(editY.value) || 0;
+        
+        const priceVal = parseFloat(editPrice.value);
+        skill.price = isNaN(priceVal) ? undefined : priceVal;
+        
+        skill.description = editDescription.value;
+        
+        renderer.redraw();
+    }
+
+    [editName, editType, editX, editY, editPrice, editDescription].forEach(input => {
+        input.addEventListener('input', updateSelectedSkill);
+    });
+    
     generateBtn.addEventListener('click', () => {
         try {
             const jsonText = jsonInput.value;
@@ -553,5 +748,262 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderer.redraw();
             }
         }
+    });
+
+    // Render connections list
+    function renderConnections(skill) {
+        connectionsList.innerHTML = '';
+        
+        if (!skill.connections) {
+            skill.connections = [];
+        }
+        
+        if (skill.connections.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.color = '#888';
+            emptyMsg.style.fontStyle = 'italic';
+            emptyMsg.style.fontSize = '0.9rem';
+            emptyMsg.style.padding = '0.5rem';
+            emptyMsg.textContent = 'No connections';
+            connectionsList.appendChild(emptyMsg);
+            return;
+        }
+
+        skill.connections.forEach((connection, index) => {
+            const item = document.createElement('div');
+            item.className = 'connection-item';
+            
+            // Header
+            const header = document.createElement('div');
+            header.className = 'connection-header';
+            
+            const title = document.createElement('span');
+            title.className = 'connection-title';
+            title.textContent = `Connection ${index + 1}`;
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-connection-btn';
+            deleteBtn.innerHTML = '&times;';
+            deleteBtn.title = 'Delete Connection';
+            deleteBtn.addEventListener('click', () => {
+                skill.connections.splice(index, 1);
+                renderConnections(skill);
+                renderer.redraw();
+            });
+            
+            header.appendChild(title);
+            header.appendChild(deleteBtn);
+            item.appendChild(header);
+            
+            // Target Skill
+            const targetGroup = document.createElement('div');
+            targetGroup.className = 'form-group';
+            const targetLabel = document.createElement('label');
+            targetLabel.textContent = 'Target';
+            const targetSelect = document.createElement('select');
+            
+            // Populate with other skills
+            renderer.skills.forEach(s => {
+                if (s.id !== skill.id) {
+                    const option = document.createElement('option');
+                    option.value = s.id;
+                    option.textContent = s.name || s.id;
+                    if (s.id === connection.targetSkillId) {
+                        option.selected = true;
+                    }
+                    targetSelect.appendChild(option);
+                }
+            });
+            
+            targetSelect.addEventListener('change', (e) => {
+                connection.targetSkillId = e.target.value;
+                renderer.redraw();
+            });
+            
+            targetGroup.appendChild(targetLabel);
+            targetGroup.appendChild(targetSelect);
+            item.appendChild(targetGroup);
+            
+            // Type
+            const typeGroup = document.createElement('div');
+            typeGroup.className = 'form-group';
+            typeGroup.style.marginTop = '0.5rem';
+            const typeLabel = document.createElement('label');
+            typeLabel.textContent = 'Type';
+            const typeSelect = document.createElement('select');
+            
+            ['line', 'ark'].forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                if (connection.type === type) {
+                    option.selected = true;
+                }
+                typeSelect.appendChild(option);
+            });
+            
+            typeSelect.addEventListener('change', (e) => {
+                connection.type = e.target.value;
+                // Initialize required properties if missing
+                if (connection.type === 'ark' && !connection.circleCenter) {
+                    connection.circleCenter = { x: 0, y: 0 };
+                }
+                if (connection.type === 'line' && !connection.wayPoints) {
+                    connection.wayPoints = [];
+                }
+                renderConnections(skill); // Re-render to show/hide fields
+                renderer.redraw();
+            });
+            
+            typeGroup.appendChild(typeLabel);
+            typeGroup.appendChild(typeSelect);
+            item.appendChild(typeGroup);
+            
+            // Ark Center Fields
+            if (connection.type === 'ark') {
+                if (!connection.circleCenter) connection.circleCenter = { x: 0, y: 0 };
+                
+                const centerRow = document.createElement('div');
+                centerRow.className = 'form-row';
+                centerRow.style.marginTop = '0.5rem';
+                
+                // X
+                const xGroup = document.createElement('div');
+                xGroup.className = 'form-group';
+                xGroup.innerHTML = '<label>Center X</label>';
+                const xInput = document.createElement('input');
+                xInput.type = 'number';
+                xInput.value = connection.circleCenter.x;
+                xInput.addEventListener('input', (e) => {
+                    connection.circleCenter.x = parseFloat(e.target.value) || 0;
+                    renderer.redraw();
+                });
+                xGroup.appendChild(xInput);
+                
+                // Y
+                const yGroup = document.createElement('div');
+                yGroup.className = 'form-group';
+                yGroup.innerHTML = '<label>Center Y</label>';
+                const yInput = document.createElement('input');
+                yInput.type = 'number';
+                yInput.value = connection.circleCenter.y;
+                yInput.addEventListener('input', (e) => {
+                    connection.circleCenter.y = parseFloat(e.target.value) || 0;
+                    renderer.redraw();
+                });
+                yGroup.appendChild(yInput);
+                
+                centerRow.appendChild(xGroup);
+                centerRow.appendChild(yGroup);
+                item.appendChild(centerRow);
+            }
+            
+            // Waypoints Fields
+            if (connection.type === 'line') {
+                const wpSection = document.createElement('div');
+                wpSection.style.marginTop = '0.5rem';
+                
+                const wpHeader = document.createElement('div');
+                wpHeader.innerHTML = '<label>Waypoints</label>';
+                wpSection.appendChild(wpHeader);
+                
+                const wpList = document.createElement('div');
+                wpList.className = 'waypoint-list';
+                
+                if (connection.wayPoints && connection.wayPoints.length > 0) {
+                    connection.wayPoints.forEach((wp, wpIndex) => {
+                        const wpItem = document.createElement('div');
+                        wpItem.className = 'waypoint-item';
+                        
+                        // X
+                        const wpX = document.createElement('input');
+                        wpX.type = 'number';
+                        wpX.placeholder = 'X';
+                        wpX.style.width = '50px';
+                        wpX.value = wp.x;
+                        wpX.addEventListener('input', (e) => {
+                            wp.x = parseFloat(e.target.value) || 0;
+                            renderer.redraw();
+                        });
+                        
+                        // Y
+                        const wpY = document.createElement('input');
+                        wpY.type = 'number';
+                        wpY.placeholder = 'Y';
+                        wpY.style.width = '50px';
+                        wpY.value = wp.y;
+                        wpY.addEventListener('input', (e) => {
+                            wp.y = parseFloat(e.target.value) || 0;
+                            renderer.redraw();
+                        });
+                        
+                        const removeWp = document.createElement('button');
+                        removeWp.className = 'remove-waypoint-btn';
+                        removeWp.innerHTML = '&times;';
+                        removeWp.title = 'Remove Waypoint';
+                        removeWp.addEventListener('click', () => {
+                            connection.wayPoints.splice(wpIndex, 1);
+                            renderConnections(skill);
+                            renderer.redraw();
+                        });
+                        
+                        wpItem.appendChild(document.createTextNode('X:'));
+                        wpItem.appendChild(wpX);
+                        wpItem.appendChild(document.createTextNode('Y:'));
+                        wpItem.appendChild(wpY);
+                        wpItem.appendChild(removeWp);
+                        wpList.appendChild(wpItem);
+                    });
+                }
+                
+                wpSection.appendChild(wpList);
+                
+                const addWpBtn = document.createElement('button');
+                addWpBtn.className = 'add-waypoint-btn';
+                addWpBtn.textContent = '+ Add Waypoint';
+                addWpBtn.addEventListener('click', () => {
+                    if (!connection.wayPoints) connection.wayPoints = [];
+                    connection.wayPoints.push({ x: 0, y: 0 });
+                    renderConnections(skill);
+                    renderer.redraw();
+                });
+                wpSection.appendChild(addWpBtn);
+                
+                item.appendChild(wpSection);
+            }
+            
+            connectionsList.appendChild(item);
+        });
+    }
+    
+    // Add Connection Button
+    addConnectionBtn.addEventListener('click', () => {
+        const skill = renderer.selectedSkill;
+        if (!skill) return;
+        
+        // Find a default target (first available that isn't self)
+        let targetId = null;
+        for (const other of renderer.skills) {
+            if (other.id !== skill.id) {
+                targetId = other.id;
+                break;
+            }
+        }
+        
+        if (!targetId) {
+            alert('No other skills available to connect to.');
+            return;
+        }
+        
+        if (!skill.connections) skill.connections = [];
+        
+        skill.connections.push({
+            targetSkillId: targetId,
+            type: 'line',
+            wayPoints: []
+        });
+        
+        renderConnections(skill);
+        renderer.redraw();
     });
 });

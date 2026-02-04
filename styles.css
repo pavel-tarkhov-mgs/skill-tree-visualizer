@@ -119,6 +119,7 @@ header h1 {
 }
 
 .canvas-container {
+    position: relative;
     background-color: #2d2d2d;
     padding: 1.5rem;
     border-radius: 8px;
@@ -177,6 +178,236 @@ header h1 {
     display: block;
     max-width: 100%;
     height: auto;
+}
+
+/* Skill Editor Styles */
+.skill-editor {
+    position: absolute;
+    top: 80px;
+    right: 30px;
+    width: 320px;
+    max-height: calc(100vh - 120px);
+    background-color: #2d2d2d;
+    border: 2px solid #3d3d3d;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+    overflow-y: auto;
+    animation: fadeIn 0.2s ease-out;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.editor-header {
+    background-color: #3d3d3d;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #4d4d4d;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.editor-header h3 {
+    font-size: 1rem;
+    color: #e0e0e0;
+    margin: 0;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: #ff6b6b;
+}
+
+.editor-content {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    color: #aaa;
+}
+
+.skill-editor input,
+.skill-editor select,
+.skill-editor textarea {
+    padding: 0.5rem;
+    background-color: #1a1a1a;
+    border: 1px solid #3d3d3d;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.skill-editor input:focus,
+.skill-editor select:focus,
+.skill-editor textarea:focus {
+    border-color: #4CAF50;
+}
+
+.skill-editor input[readonly] {
+    background-color: #252525;
+    color: #888;
+    cursor: not-allowed;
+}
+
+/* Connections Section */
+.connections-section {
+    margin-top: 1rem;
+    border-top: 1px solid #4d4d4d;
+    padding-top: 1rem;
+}
+
+.connections-section h4 {
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+}
+
+.connections-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.connection-item {
+    background-color: #252525;
+    border: 1px solid #3d3d3d;
+    border-radius: 4px;
+    padding: 0.75rem;
+}
+
+.connection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.connection-title {
+    font-size: 0.8rem;
+    color: #888;
+    font-weight: 600;
+}
+
+.delete-connection-btn {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.delete-connection-btn:hover {
+    opacity: 1;
+}
+
+.add-connection-btn {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: #3d3d3d;
+    color: #e0e0e0;
+    border: 1px dashed #555;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-connection-btn:hover {
+    background-color: #444;
+    border-color: #777;
+}
+
+.waypoint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid #3d3d3d;
+}
+
+.waypoint-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.waypoint-item span {
+    font-size: 0.8rem;
+    color: #888;
+    width: 20px;
+}
+
+.remove-waypoint-btn,
+.add-waypoint-btn {
+    background: #3d3d3d;
+    border: none;
+    color: #e0e0e0;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.remove-waypoint-btn:hover {
+    background-color: #d32f2f;
+}
+
+.add-waypoint-btn {
+    width: 100%;
+    margin-top: 0.25rem;
+}
+
+.add-waypoint-btn:hover {
+    background-color: #4CAF50;
 }
 
 @media (max-width: 1400px) {
